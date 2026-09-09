@@ -1,0 +1,29 @@
+workflows:
+  beatnova-android:
+    name: BeatNova Android APK
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    scripts:
+      - name: Install Gradle 8.9
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          rm -rf gradle-8.9 gradle.zip
+          curl -L --fail -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle.zip
+          rm gradle.zip
+
+      - name: Configure Android SDK
+        script: |
+          set -e
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+
+      - name: Build BeatNova debug APK
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          "$CM_BUILD_DIR/gradle-8.9/bin/gradle" --no-daemon assembleDebug
+
+    artifacts:
+      - app/build/outputs/**/*.apk
