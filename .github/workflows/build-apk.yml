@@ -12,10 +12,6 @@ env:
   SUPABASE_URL: https://fwowpkiivliyzaebzpvw.supabase.co
   SUPABASE_ANON_KEY: sb_publishable_rEQEUxwxVSjVOsEzB9A7wA_IGH9V5X6
 
-env:
-  SUPABASE_URL: https://fwowpkiivliyzaebzpvw.supabase.co
-  SUPABASE_ANON_KEY: sb_publishable_rEQEUxwxVSjVOsEzB9A7wA_IGH9V5X6
-
 jobs:
   build:
     runs-on: ubuntu-latest
