@@ -29,11 +29,22 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Gradle 8.13
+      - name: Normalize Compose Icon syntax
+        shell: bash
         run: |
-          curl -L --fail -o gradle.zip https://services.gradle.org/distributions/gradle-8.13-bin.zip
-          unzip -q gradle.zip
-          rm gradle.zip
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('app/src/main/java/com/beatnova/app/MainActivity.kt')
+          s = p.read_text()
+          # Repair duplicated named-argument prefixes introduced by earlier auto-fixes.
+          for name in ('imageVector', 'contentDescription', 'tint', 'modifier'):
+              s = re.sub(r'\b' + name + r'\s*=\s*' + name + r'\s*=\s*', name + ' = ', s)
+          # Repair positional Modifier arguments appearing after named Icon arguments.
+          s = re.sub(r'(,\s*tint\s*=\s*[^,()]+),\s*Modifier\.size\(', r'\1, modifier = Modifier.size(', s)
+          s = re.sub(r'(,\s*contentDescription\s*=\s*[^,()]+),\s*Modifier\.size\(', r'\1, modifier = Modifier.size(', s)
+          p.write_text(s)
+          PY
 
       - name: Build debug APK
         run: ./gradle-8.13/bin/gradle --no-daemon assembleDebug
