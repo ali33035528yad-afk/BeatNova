@@ -1,0 +1,1 @@
+# BeatNova release rules
