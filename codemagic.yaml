@@ -1,29 +1,33 @@
 workflows:
   beatnova-android:
-    name: BeatNova Android APK
-    max_build_duration: 120
-    instance_type: mac_mini_m2
-
+    name: BeatNova Android Final
+    max_build_duration: 30
+    environment:
+      java: 17
+      vars:
+        PACKAGE_NAME: "com.beatnova.app"
+        SUPABASE_URL: $SUPABASE_URL
+        SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
     scripts:
-      - name: Install Gradle 8.9
-        script: |
-          set -e
-          cd "$CM_BUILD_DIR"
-          rm -rf gradle-8.9 gradle.zip
-          curl -L --fail -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
-          unzip -q gradle.zip
-          rm gradle.zip
-
       - name: Configure Android SDK
         script: |
           set -e
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-
-      - name: Build BeatNova debug APK
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null 2>&1 || true
+      - name: Prepare Gradle 8.9
         script: |
           set -e
           cd "$CM_BUILD_DIR"
-          "$CM_BUILD_DIR/gradle-8.9/bin/gradle" --no-daemon assembleDebug
-
+          curl -L --fail --retry 3 -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          rm -rf gradle-8.9
+          unzip -q gradle.zip
+          rm -f gradle.zip
+          "$CM_BUILD_DIR/gradle-8.9/bin/gradle" --version
+      - name: Build BeatNova Release APK
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          "$CM_BUILD_DIR/gradle-8.9/bin/gradle" --no-daemon --stacktrace clean assembleRelease
     artifacts:
-      - app/build/outputs/**/*.apk
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/apk/release/output-metadata.json
