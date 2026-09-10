@@ -45,9 +45,9 @@ private val Purple = Color(0xFFC65CFF)
 private val Blue = Color(0xFF617CFF)
 private val Pink = Color(0xFFFF3E9D)
 
-private data class Song(val id: String, val title: String, val artist: String, val audioUrl: String)
+private typealias Song = BeatNovaSong
 
-private object SongRepository {
+private object SongRepositoryLegacy {
     private val client = OkHttpClient()
     suspend fun load(): Result<List<Song>> = withContext(Dispatchers.IO) {
         val base = BuildConfig.SUPABASE_URL.trimEnd('/')
