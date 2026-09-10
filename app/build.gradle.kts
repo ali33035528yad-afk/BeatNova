@@ -36,7 +36,9 @@ android {
         }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
-    kotlinOptions { jvmTarget = "17" }
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
     buildFeatures { compose = true; buildConfig = true }
 }
 
@@ -56,8 +58,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation(platform("io.github.jan-tennert.supabase:bom:3.5.0"))
-    implementation("io.github.jan-tennert.supabase:auth-kt")
-    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan.supabase:auth-kt")
+    implementation("io.github.jan.supabase:postgrest-kt")
     implementation("io.ktor:ktor-client-android:3.4.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 }
