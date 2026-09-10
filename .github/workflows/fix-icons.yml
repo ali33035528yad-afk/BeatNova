@@ -57,10 +57,10 @@ jobs:
                           elif c in ')]}': d-=1
                           elif c==',' and d==0: parts.append(inside[last:j].strip()); last=j+1
                   parts.append(inside[last:].strip())
-                  if parts and '=' not in parts[0].split()[0]:
-                      parts[0]='imageVector = '+parts[0]
-                  if len(parts)>1 and '=' not in parts[1].split()[0]:
-                      parts[1]='contentDescription = '+parts[1]
+                  names=['imageVector','contentDescription','tint','modifier']
+                  for k in range(min(len(parts),4)):
+                      if '=' not in parts[k].split()[0]:
+                          parts[k]=names[k]+' = '+parts[k]
                   newinside=', '.join(parts)
                   changed=changed[:start+len('Icon(')]+newinside+changed[i:]
                   pos=start+len('Icon(')+len(newinside)+1
