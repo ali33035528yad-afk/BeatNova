@@ -35,24 +35,6 @@ jobs:
           unzip -q gradle.zip
           rm gradle.zip
 
-      - name: Normalize Compose Icon calls
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('app/src/main/java/com/beatnova/app/MainActivity.kt')
-          s = p.read_text()
-          replacements = {
-              'Icon(icon, null, tint = color)': 'Icon(imageVector = icon, contentDescription = null, tint = color)',
-              'Icon(Icons.Default.ChevronLeft, null, tint = Muted)': 'Icon(imageVector = Icons.Default.ChevronLeft, contentDescription = null, tint = Muted)',
-              'Icon(icon, null, tint = White, Modifier.size(15.dp))': 'Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(15.dp), tint = White)',
-              'Icon(icon, null, tint = Purple, Modifier.size(46.dp))': 'Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(46.dp), tint = Purple)',
-              'Icon(icon,null,tint=if(active)Purple else Muted,Modifier.size(25.dp))': 'Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(25.dp), tint = if(active) Purple else Muted)',
-          }
-          for a,b in replacements.items():
-              s = s.replace(a,b)
-          p.write_text(s)
-          PY
-
       - name: Build debug APK
         run: ./gradle-8.13/bin/gradle --no-daemon assembleDebug
 
