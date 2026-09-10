@@ -1,0 +1,79 @@
+name: Fix BeatNova Icon Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, '[auto-fix-icons]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Normalize Compose Icon calls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('app/src/main/java/com/beatnova/app/MainActivity.kt')
+          s = p.read_text()
+          out=[]
+          for line in s.splitlines(keepends=True):
+              if 'Icon(' not in line or 'IconButton(' in line:
+                  out.append(line); continue
+              pos=0; changed=line
+              while True:
+                  m=re.search(r'\bIcon\(', changed[pos:])
+                  if not m: break
+                  start=pos+m.start(); i=start+len('Icon('); depth=0; quote=None; esc=False
+                  while i < len(changed):
+                      c=changed[i]
+                      if quote:
+                          if esc: esc=False
+                          elif c=='\\': esc=True
+                          elif c==quote: quote=None
+                      else:
+                          if c in "'\"": quote=c
+                          elif c in '([{': depth+=1
+                          elif c in ')]}':
+                              if c==')' and depth==0: break
+                              depth-=1
+                      i+=1
+                  if i>=len(changed): break
+                  inside=changed[start+len('Icon('):i]
+                  parts=[]; last=0; d=0; q=None; esc=False
+                  for j,c in enumerate(inside):
+                      if q:
+                          if esc: esc=False
+                          elif c=='\\': esc=True
+                          elif c==q: q=None
+                      else:
+                          if c in "'\"": q=c
+                          elif c in '([{': d+=1
+                          elif c in ')]}': d-=1
+                          elif c==',' and d==0: parts.append(inside[last:j].strip()); last=j+1
+                  parts.append(inside[last:].strip())
+                  if parts and '=' not in parts[0].split()[0]:
+                      parts[0]='imageVector = '+parts[0]
+                  if len(parts)>1 and '=' not in parts[1].split()[0]:
+                      parts[1]='contentDescription = '+parts[1]
+                  newinside=', '.join(parts)
+                  changed=changed[:start+len('Icon(')]+newinside+changed[i:]
+                  pos=start+len('Icon(')+len(newinside)+1
+              out.append(changed)
+          new=''.join(out)
+          if new != s:
+              p.write_text(new)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/com/beatnova/app/MainActivity.kt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix: normalize Compose Icon arguments [auto-fix-icons]'
+          git push
