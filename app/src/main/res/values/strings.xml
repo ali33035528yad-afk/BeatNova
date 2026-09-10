@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">BeatNova</string>
+    <string name="notification_channel_name">پخش موسیقی BeatNova</string>
 </resources>
