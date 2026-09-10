@@ -29,14 +29,14 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Gradle 8.9
+      - name: Install Gradle 8.11.1
         run: |
-          curl -L --fail -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          curl -L --fail -o gradle.zip https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
           unzip -q gradle.zip
           rm gradle.zip
 
       - name: Build debug APK
-        run: ./gradle-8.9/bin/gradle --no-daemon assembleDebug
+        run: ./gradle-8.11.1/bin/gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
