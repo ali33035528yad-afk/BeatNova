@@ -1,0 +1,128 @@
+name: Fix BeatNova Auth
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/fix-auth.yml' ]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch auth code
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/beatnova/app/MainActivity.kt')
+          s = p.read_text()
+          s = s.replace('import io.github.jan.supabase.auth.providers.builtin.Email\n', '')
+          start = s.index('    fun submit() {')
+          end = s.index('\n\n    MaterialTheme', start)
+          new = '''    fun submit() {
+              val normalizedEmail = email.trim()
+                  .filterNot { it.isWhitespace() || it.category == CharCategory.FORMAT }
+                  .lowercase()
+              if (!android.util.Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches()) {
+                  error = "فرمت ایمیل صحیح نیست. مثلاً: name@gmail.com"
+                  return
+              }
+              if (password.length < 6) {
+                  error = "رمز عبور باید حداقل ۶ کاراکتر باشد."
+                  return
+              }
+              scope.launch {
+                  busy = true
+                  error = null
+                  info = null
+                  try {
+                      if (isSignUp) {
+                          val result = AuthHttp.signUp(normalizedEmail, password)
+                          if (result.sessionImported) onAuthenticated()
+                          else info = "ثبت‌نام انجام شد. ایمیلت را بررسی و تأیید کن، سپس وارد شو."
+                      } else {
+                          AuthHttp.signIn(normalizedEmail, password)
+                          onAuthenticated()
+                      }
+                  } catch (e: Exception) {
+                      error = e.message ?: "ورود یا ثبت‌نام ناموفق بود."
+                  } finally {
+                      busy = false
+                  }
+              }
+          }'''
+          s = s[:start] + new + s[end:]
+          p.write_text(s)
+          PY
+
+          cat > app/src/main/java/com/beatnova/app/AuthHttp.kt <<'EOF'
+          package com.beatnova.app
+
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.withContext
+          import okhttp3.MediaType.Companion.toMediaType
+          import okhttp3.OkHttpClient
+          import okhttp3.Request
+          import okhttp3.RequestBody.Companion.toRequestBody
+          import org.json.JSONObject
+
+          object AuthHttp {
+              private val client = OkHttpClient()
+              private val jsonType = "application/json; charset=utf-8".toMediaType()
+
+              data class SignUpResult(val sessionImported: Boolean)
+
+              private suspend fun post(path: String, email: String, password: String): JSONObject = withContext(Dispatchers.IO) {
+                  val base = BuildConfig.SUPABASE_URL.trimEnd('/')
+                  val key = BuildConfig.SUPABASE_ANON_KEY
+                  require(base.isNotBlank() && key.isNotBlank()) { "پیکربندی Supabase ناقص است." }
+                  val body = JSONObject().put("email", email).put("password", password).toString().toRequestBody(jsonType)
+                  val request = Request.Builder()
+                      .url("$base/auth/v1/$path")
+                      .addHeader("apikey", key)
+                      .addHeader("Authorization", "Bearer $key")
+                      .addHeader("Content-Type", "application/json")
+                      .post(body)
+                      .build()
+                  client.newCall(request).execute().use { response ->
+                      val raw = response.body?.string().orEmpty()
+                      val json = runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
+                      if (!response.isSuccessful) {
+                          val message = json.optString("msg").ifBlank { json.optString("message") }
+                          val code = json.optString("error_code")
+                          throw Exception(listOf(code, message).filter { it.isNotBlank() }.joinToString(": "))
+                      }
+                      json
+                  }
+              }
+
+              suspend fun signUp(email: String, password: String): SignUpResult {
+                  val json = post("signup", email, password)
+                  val access = json.optString("access_token")
+                  val refresh = json.optString("refresh_token")
+                  if (access.isNotBlank() && refresh.isNotBlank()) {
+                      supabase.auth.importAuthToken(access, refresh)
+                      return SignUpResult(true)
+                  }
+                  return SignUpResult(false)
+              }
+
+              suspend fun signIn(email: String, password: String) {
+                  val json = post("token?grant_type=password", email, password)
+                  val access = json.optString("access_token")
+                  val refresh = json.optString("refresh_token")
+                  require(access.isNotBlank() && refresh.isNotBlank()) { "پاسخ ورود Supabase ناقص است." }
+                  supabase.auth.importAuthToken(access, refresh)
+              }
+          }
+          EOF
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/com/beatnova/app/MainActivity.kt app/src/main/java/com/beatnova/app/AuthHttp.kt
+          git commit -m 'Fix BeatNova email auth REST flow' || exit 0
+          git push
