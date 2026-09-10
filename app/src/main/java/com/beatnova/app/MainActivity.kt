@@ -52,15 +52,11 @@ private object SongRepository {
     suspend fun load(): Result<List<Song>> = withContext(Dispatchers.IO) {
         val base = BuildConfig.SUPABASE_URL.trimEnd('/')
         val key = BuildConfig.SUPABASE_ANON_KEY
-        val session = supabase.auth.currentSessionOrNull()
-        val accessToken = session?.accessToken
         if (base.isBlank() || key.isBlank()) return@withContext Result.failure(Exception("SUPABASE_CONFIG"))
-        if (accessToken.isNullOrBlank()) return@withContext Result.failure(Exception("AUTH_REQUIRED"))
         try {
             val request = Request.Builder()
                 .url("$base/rest/v1/songs?select=id,title,artist,audio_url&order=created_at.desc")
                 .addHeader("apikey", key)
-                .addHeader("Authorization", "Bearer $accessToken")
                 .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP_${response.code}"))
