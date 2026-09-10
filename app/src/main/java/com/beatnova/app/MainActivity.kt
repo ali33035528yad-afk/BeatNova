@@ -29,7 +29,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -124,39 +123,37 @@ private fun AuthScreen(onAuthenticated: () -> Unit) {
     var info by remember { mutableStateOf<String?>(null) }
 
     fun submit() {
-        val normalizedEmail = email.trim().replace("\u200c", "").replace(" ", "").lowercase()
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches()) {
-            error = "فرمت ایمیل صحیح نیست. مثلاً: name@gmail.com"
-            return
-        }
-        if (password.length < 6) {
-            error = "رمز عبور باید حداقل ۶ کاراکتر باشد."
-            return
-        }
-        scope.launch {
-            busy = true
-            error = null
-            info = null
-            try {
-                if (isSignUp) {
-                    supabase.auth.signUpWith(Email) {
-                        this.email = normalizedEmail
-                        this.password = password
-                    }
-                    if (supabase.auth.currentSessionOrNull() != null) onAuthenticated()
-                    else info = "ثبت‌نام انجام شد. اگر تأیید ایمیل فعال باشد، ایمیلت را تأیید کن و سپس وارد شو."
-                } else {
-                    supabase.auth.signInWith(Email) {
-                        this.email = normalizedEmail
-                        this.password = password
-                    }
-                    onAuthenticated()
-                }
-            } catch (e: Exception) {
-                error = e.message ?: "ورود یا ثبت‌نام ناموفق بود."
-            } finally { busy = false }
+    val normalizedEmail = email.trim()
+        .filterNot { it.isWhitespace() || it.category == CharCategory.FORMAT }
+        .lowercase()
+    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches()) {
+        error = "فرمت ایمیل صحیح نیست. مثلاً: name@gmail.com"
+        return
+    }
+    if (password.length < 6) {
+        error = "رمز عبور باید حداقل ۶ کاراکتر باشد."
+        return
+    }
+    scope.launch {
+        busy = true
+        error = null
+        info = null
+        try {
+            if (isSignUp) {
+                val result = AuthHttp.signUp(normalizedEmail, password)
+                if (result.sessionImported) onAuthenticated()
+                else info = "ثبت‌نام انجام شد. ایمیلت را بررسی و تأیید کن، سپس وارد شو."
+            } else {
+                AuthHttp.signIn(normalizedEmail, password)
+                onAuthenticated()
+            }
+        } catch (e: Exception) {
+            error = e.message ?: "ورود یا ثبت‌نام ناموفق بود."
+        } finally {
+            busy = false
         }
     }
+}
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Purple, background = Bg, surface = Panel, onSurface = White)) {
         Box(Modifier.fillMaxSize().background(Bg), contentAlignment = Alignment.Center) {
