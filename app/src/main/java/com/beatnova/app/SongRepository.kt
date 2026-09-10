@@ -6,7 +6,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 
-internal data class BeatNovaSong(val id: String, val title: String, val artist: String, val audioUrl: String)
+// Public because SongRepository.load() is public and returns this type.
+data class BeatNovaSong(val id: String, val title: String, val artist: String, val audioUrl: String)
 
 object SongRepository {
     private val client = OkHttpClient()
