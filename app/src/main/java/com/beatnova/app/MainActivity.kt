@@ -28,7 +28,8 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import io.github.jan.supabase.auth.providers.Email
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -123,8 +124,13 @@ private fun AuthScreen(onAuthenticated: () -> Unit) {
     var info by remember { mutableStateOf<String?>(null) }
 
     fun submit() {
-        if (email.isBlank() || password.length < 6) {
-            error = "ایمیل و رمز عبور حداقل ۶ کاراکتر لازم است."
+        val normalizedEmail = email.trim().replace("\u200c", "").replace(" ", "").lowercase()
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches()) {
+            error = "فرمت ایمیل صحیح نیست. مثلاً: name@gmail.com"
+            return
+        }
+        if (password.length < 6) {
+            error = "رمز عبور باید حداقل ۶ کاراکتر باشد."
             return
         }
         scope.launch {
@@ -134,14 +140,14 @@ private fun AuthScreen(onAuthenticated: () -> Unit) {
             try {
                 if (isSignUp) {
                     supabase.auth.signUpWith(Email) {
-                        this.email = email.trim()
+                        this.email = normalizedEmail
                         this.password = password
                     }
                     if (supabase.auth.currentSessionOrNull() != null) onAuthenticated()
                     else info = "ثبت‌نام انجام شد. اگر تأیید ایمیل فعال باشد، ایمیلت را تأیید کن و سپس وارد شو."
                 } else {
                     supabase.auth.signInWith(Email) {
-                        this.email = email.trim()
+                        this.email = normalizedEmail
                         this.password = password
                     }
                     onAuthenticated()
@@ -252,11 +258,11 @@ private fun HomeScreen(songs: List<Song>, loading: Boolean, error: String?, curr
 @Composable private fun FeatureCard(title: String, subtitle: String, icon: ImageVector, color: Color) { Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).clip(RoundedCornerShape(22.dp)).background(Panel).padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(50.dp).clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = .14f)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = color, modifier = Modifier.size(25.dp)) }; Spacer(Modifier.width(13.dp)); Column(Modifier.weight(1f)) { Text(title, color = White, fontWeight = FontWeight.Bold, fontSize = 15.sp); Text(subtitle, color = Muted, fontSize = 11.sp, maxLines = 2) }; Icon(Icons.Default.ChevronLeft, null, tint = Muted) } }
 @Composable private fun BadgePill(text: String, icon: ImageVector) { Row(Modifier.clip(CircleShape).background(Color.White.copy(alpha = .10f)).padding(horizontal = 11.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = White, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(5.dp)); Text(text, color = White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) } }
 @Composable private fun SectionHeader(title: String, action: String) { Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) { Text(title, color = White, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text(action, color = Purple, fontSize = 12.sp, fontWeight = FontWeight.Bold) } }
-@Composable private fun LoadingBox() { Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Purple) } }
-@Composable private fun EmptyState(title: String, subtitle: String, icon: ImageVector) { Column(Modifier.fillMaxWidth().padding(24.dp).clip(RoundedCornerShape(24.dp)).background(Panel).padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) { Icon(icon, null, tint = Purple, modifier = Modifier.size(42.dp)); Spacer(Modifier.height(12.dp)); Text(title, color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold); Spacer(Modifier.height(5.dp)); Text(subtitle, color = Muted, fontSize = 12.sp) } }
-@Composable private fun SongRow(song: Song, selected: Boolean, play: (Song) -> Unit) { Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 5.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) Color(0xFF241A35) else Panel).clickable { play(song) }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(Purple, Blue))), contentAlignment = Alignment.Center) { Icon(Icons.Default.MusicNote, null, tint = White) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(song.title, color = White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(song.artist, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }; Box(Modifier.size(38.dp).clip(CircleShape).background(if (selected) Purple else Panel2), contentAlignment = Alignment.Center) { Icon(if (selected) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = White) } } }
-@Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, songs: List<Song>, current: Song?, play: (Song) -> Unit) { Column(Modifier.fillMaxSize().padding(top = 22.dp)) { Text("جستجو", color = White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 20.dp)); Text("آهنگ یا هنرمند مورد علاقه‌ات را پیدا کن", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)); OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth().padding(16.dp), singleLine = true, placeholder = { Text("نام آهنگ یا خواننده") }, leadingIcon = { Icon(Icons.Default.Search, null) }, shape = RoundedCornerShape(18.dp)); LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) { if (songs.isEmpty()) item { EmptyState("نتیجه‌ای پیدا نشد", "جستجو را تغییر بده یا آهنگ اضافه کن.", Icons.Default.SearchOff) } else items(songs, key = { it.id }) { SongRow(it, current?.id == it.id, play) } } } }
-@Composable private fun LibraryScreen(songs: List<Song>, current: Song?, play: (Song) -> Unit) { Column(Modifier.fillMaxSize().padding(top = 22.dp)) { Text("کتابخانه من", color = White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 20.dp)); Text("آهنگ‌های مورد علاقه‌ات", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)); LazyColumn(contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp)) { if (songs.isEmpty()) item { EmptyState("کتابخانه خالی است", "بعداً آهنگ‌های مورد علاقه را اینجا می‌بینی.", Icons.Default.FavoriteBorder) } else items(songs, key = { it.id }) { SongRow(it, current?.id == it.id, play) } } } }
+@Composable private fun SongRow(song: Song, active: Boolean, play: (Song) -> Unit) { Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).clip(RoundedCornerShape(18.dp)).background(if (active) Panel2 else Panel).clickable { play(song) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(50.dp).clip(RoundedCornerShape(15.dp)).background(Brush.linearGradient(listOf(Pink, Purple))), contentAlignment = Alignment.Center) { Icon(Icons.Default.MusicNote, null, tint = White) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(song.title, color = White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(song.artist, color = Muted, fontSize = 11.sp) }; Icon(Icons.Default.PlayArrow, null, tint = Purple) } }
+@Composable private fun LoadingBox() { Box(Modifier.fillMaxWidth().padding(25.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Purple) } }
+@Composable private fun EmptyState(title: String, subtitle: String, icon: ImageVector) { Column(Modifier.fillMaxWidth().padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally) { Icon(icon, null, tint = Purple, modifier = Modifier.size(46.dp)); Spacer(Modifier.height(12.dp)); Text(title, color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold); Text(subtitle, color = Muted, fontSize = 12.sp) } }
+@Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, songs: List<Song>, current: Song?, play: (Song) -> Unit) { Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 20.dp)) { Text("جستجو", color = White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold); Text("آهنگ یا هنرمند مورد علاقه‌ات را پیدا کن", color = Muted, fontSize = 13.sp); Spacer(Modifier.height(18.dp)); OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("نام آهنگ یا خواننده") }, leadingIcon = { Icon(Icons.Default.Search, null) }); Spacer(Modifier.height(15.dp)); LazyColumn { if (songs.isEmpty()) item { EmptyState("نتیجه‌ای پیدا نشد", "جستجو را تغییر بده یا آهنگ اضافه کن", Icons.Default.SearchOff) } else items(songs, key = { it.id }) { SongRow(it, current?.id == it.id, play) } } } }
+@Composable private fun LibraryScreen(songs: List<Song>, current: Song?, play: (Song) -> Unit) { Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 20.dp)) { Text("کتابخانه من", color = White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold); Text("آهنگ‌های مورد علاقه‌ات", color = Muted, fontSize = 13.sp); Spacer(Modifier.height(18.dp)); if (songs.isEmpty()) EmptyState("کتابخانه خالی است", "بعداً آهنگ‌های مورد علاقه‌ات را اینجا می‌بینی", Icons.Default.FavoriteBorder) else LazyColumn { items(songs, key = { it.id }) { SongRow(it, current?.id == it.id, play) } } } }
 @Composable private fun SettingsScreen(onSignOut: () -> Unit) { Column(Modifier.fillMaxSize().padding(22.dp)) { Text("تنظیمات", color = White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold); Spacer(Modifier.height(20.dp)); SettingRow("کیفیت پخش", "بهینه برای اینترنت موبایل", Icons.Default.HighQuality); SettingRow("ظاهر برنامه", "تم تیره BeatNova", Icons.Default.DarkMode); SettingRow("درباره BeatNova", "نسخه 1.1.0", Icons.Default.Info); Spacer(Modifier.height(18.dp)); Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7A2235))) { Icon(Icons.Default.Logout, null); Spacer(Modifier.width(8.dp)); Text("خروج از حساب") } } }
 @Composable private fun SettingRow(title: String, subtitle: String, icon: ImageVector) { Row(Modifier.fillMaxWidth().padding(vertical = 5.dp).clip(RoundedCornerShape(18.dp)).background(Panel).padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Purple, modifier = Modifier.size(25.dp)); Spacer(Modifier.width(14.dp)); Column { Text(title, color = White, fontWeight = FontWeight.Bold); Text(subtitle, color = Muted, fontSize = 11.sp) } } }
 @Composable private fun MiniPlayer(song: Song, playing: Boolean, toggle: () -> Unit) { Row(Modifier.fillMaxWidth().background(Color(0xFF171824)).padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Pink, Purple))), contentAlignment = Alignment.Center) { Icon(Icons.Default.MusicNote, null, tint = White) }; Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(song.title, color = White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(song.artist, color = Muted, fontSize = 11.sp) }; IconButton(onClick = toggle) { Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = White) } } }
