@@ -12,6 +12,10 @@ env:
   SUPABASE_URL: https://fwowpkiivliyzaebzpvw.supabase.co
   SUPABASE_ANON_KEY: sb_publishable_rEQEUxwxVSjVOsEzB9A7wA_IGH9V5X6
 
+env:
+  SUPABASE_URL: https://fwowpkiivliyzaebzpvw.supabase.co
+  SUPABASE_ANON_KEY: sb_publishable_rEQEUxwxVSjVOsEzB9A7wA_IGH9V5X6
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,14 +33,14 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Gradle 8.11.1
+      - name: Install Gradle 8.13
         run: |
-          curl -L --fail -o gradle.zip https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+          curl -L --fail -o gradle.zip https://services.gradle.org/distributions/gradle-8.13-bin.zip
           unzip -q gradle.zip
           rm gradle.zip
 
       - name: Build debug APK
-        run: ./gradle-8.11.1/bin/gradle --no-daemon assembleDebug
+        run: ./gradle-8.13/bin/gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
