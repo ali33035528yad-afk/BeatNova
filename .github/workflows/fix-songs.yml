@@ -1,0 +1,29 @@
+name: Fix BeatNova Songs
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-songs.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make song API public-read compatible
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/beatnova/app/MainActivity.kt')
+          s = p.read_text()
+          old = '''        val session = supabase.auth.currentSessionOrNull()\n        val accessToken = session?.accessToken\n        if (base.isBlank() || key.isBlank()) return@withContext Result.failure(Exception("SUPABASE_CONFIG"))\n        if (accessToken.isNullOrBlank()) return@withContext Result.failure(Exception("AUTH_REQUIRED"))\n        try {\n            val request = Request.Builder()\n                .url("$base/rest/v1/songs?select=id,title,artist,audio_url&order=created_at.desc")\n                .addHeader("apikey", key)\n                .addHeader("Authorization", "Bearer $accessToken")\n                .build()\n            client.newCall(request).execute().use { response ->\n                if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP_${response.code}"))\n                val array = JSONArray(response.body?.string().orEmpty())'''
+          new = '''        if (base.isBlank() || key.isBlank()) return@withContext Result.failure(Exception("SUPABASE_CONFIG"))\n        try {\n            val request = Request.Builder()\n                .url("$base/rest/v1/songs?select=id,title,artist,audio_url&order=created_at.desc")\n                .addHeader("apikey", key)\n                .build()\n            client.newCall(request).execute().use { response ->\n                if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP_${response.code}"))\n                val array = JSONArray(response.body?.string().orEmpty())'''
+          if old not in s:
+              raise SystemExit('target block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git config user.name 'BeatNova Bot'
+          git config user.email 'actions@github.com'
+          git add app/src/main/java/com/beatnova/app/MainActivity.kt
+          git commit -m 'Fix song loading from public songs table'
+          git push
