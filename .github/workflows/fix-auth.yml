@@ -1,6 +1,6 @@
 name: Fix BeatNova Auth
 
-# one-time auth repair trigger
+# one-time auth repair trigger v2
 on:
   push:
     branches: [ main ]
