@@ -7,11 +7,11 @@ plugins {
 
 android {
     namespace = "com.beatnova.app"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.beatnova.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 4
         versionName = "1.1.0"
         buildConfigField("String", "SUPABASE_URL", "\"${System.getenv("SUPABASE_URL") ?: ""}\"")
